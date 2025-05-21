@@ -1,3 +1,29 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: EC2 Instances with Docker and CodeDeploy Agent
+
+Mappings:
+  UserDataScripts:
+    CommonScript:
+      Content: |
+        #!/bin/bash
+        yum update -y
+
+        # نصب Docker و استارت سرویس
+        amazon-linux-extras install docker -y
+        service docker start
+        usermod -a -G docker ec2-user
+
+        # نصب CodeDeploy Agent
+        yum install -y ruby
+        cd /home/ec2-user
+        wget https://aws-codedeploy-${AWS::Region}.s3.${AWS::Region}.amazonaws.com/latest/install
+        chmod +x ./install
+        ./install auto
+
+        # استارت و فعال سازی سرویس CodeDeploy
+        service codedeploy-agent start
+        chkconfig codedeploy-agent on
+
 Resources:
 
   # Security Group for EC2
@@ -25,33 +51,23 @@ Resources:
     Properties:
       InstanceType: t3.micro
       SubnetId: !ImportValue PublicSubnet1Id
-      ImageId: ami-0c02fb55956c7d316  # Amazon Linux 2 - region-specific
+      ImageId: ami-0c02fb55956c7d316  # Amazon Linux 2
       SecurityGroupIds:
         - !Ref InstanceSecurityGroup
       KeyName: Virginia-Compute
       Tags:
         - Key: Name
           Value: DockerInstance1
+        - Key: Env
+          Value: Prod
+        - Key: Role
+          Value: Frontend
+        - Key: App
+          Value: TodoApp
       UserData:
-        Fn::Base64: !Sub |
-          #!/bin/bash
-          yum update -y
-
-          # نصب Docker و استارت سرویس
-          amazon-linux-extras install docker -y
-          service docker start
-          usermod -a -G docker ec2-user
-
-          # نصب CodeDeploy Agent
-          yum install -y ruby
-          cd /home/ec2-user
-          wget https://aws-codedeploy-${AWS::Region}.s3.${AWS::Region}.amazonaws.com/latest/install
-          chmod +x ./install
-          ./install auto
-
-          # استارت و فعال سازی سرویس CodeDeploy
-          service codedeploy-agent start
-          chkconfig codedeploy-agent on
+        Fn::Base64: !Sub
+          - ${Script}
+          - Script: !FindInMap [UserDataScripts, CommonScript, Content]
 
   # EC2 in Public Subnet 2
   EC2Instance2:
@@ -66,23 +82,13 @@ Resources:
       Tags:
         - Key: Name
           Value: DockerInstance2
+        - Key: Env
+          Value: Prod
+        - Key: Role
+          Value: Frontend
+        - Key: App
+          Value: TodoApp
       UserData:
-        Fn::Base64: !Sub |
-          #!/bin/bash
-          yum update -y
-
-          # نصب Docker و استارت سرویس
-          amazon-linux-extras install docker -y
-          service docker start
-          usermod -a -G docker ec2-user
-
-          # نصب CodeDeploy Agent
-          yum install -y ruby
-          cd /home/ec2-user
-          wget https://aws-codedeploy-${AWS::Region}.s3.${AWS::Region}.amazonaws.com/latest/install
-          chmod +x ./install
-          ./install auto
-
-          # استارت و فعال سازی سرویس CodeDeploy
-          service codedeploy-agent start
-          chkconfig codedeploy-agent on
+        Fn::Base64: !Sub
+          - ${Script}
+          - Script: !FindInMap [UserDataScripts, CommonScript, Content]
