@@ -28,7 +28,7 @@ Resources:
       ImageId: ami-0c02fb55956c7d316  # Amazon Linux 2 - region-specific
       SecurityGroupIds:
         - !Ref InstanceSecurityGroup
-      KeyName: my-key-pair  # حتماً این رو به کلید واقعی خودت تغییر بده
+      KeyName: Virginia-Compute
       Tags:
         - Key: Name
           Value: DockerInstance1
@@ -49,7 +49,7 @@ Resources:
       ImageId: ami-0c02fb55956c7d316  # Amazon Linux 2
       SecurityGroupIds:
         - !Ref InstanceSecurityGroup
-      KeyName: my-key-pair  # تغییر بده به کلید خودت
+      KeyName: Virginia-Compute
       Tags:
         - Key: Name
           Value: DockerInstance2
