@@ -163,6 +163,12 @@ Resources:
       RouteTableId: !Ref PrivateRouteTable
 
 Outputs:
+  VpcId:
+    Description: VPC ID
+    Value: !Ref MyVPC
+    Export:
+      Name: MyVPC-Id
+  
   PublicSubnet1Id:
     Description: Public Subnet 1 ID
     Value: !Ref PublicSubnet1
