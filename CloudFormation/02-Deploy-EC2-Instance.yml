@@ -36,9 +36,22 @@ Resources:
         Fn::Base64: !Sub |
           #!/bin/bash
           yum update -y
+
+          # نصب Docker و استارت سرویس
           amazon-linux-extras install docker -y
           service docker start
           usermod -a -G docker ec2-user
+
+          # نصب CodeDeploy Agent
+          yum install -y ruby
+          cd /home/ec2-user
+          wget https://aws-codedeploy-${AWS::Region}.s3.${AWS::Region}.amazonaws.com/latest/install
+          chmod +x ./install
+          ./install auto
+
+          # استارت و فعال سازی سرویس CodeDeploy
+          service codedeploy-agent start
+          chkconfig codedeploy-agent on
 
   # EC2 in Public Subnet 2
   EC2Instance2:
@@ -57,6 +70,19 @@ Resources:
         Fn::Base64: !Sub |
           #!/bin/bash
           yum update -y
+
+          # نصب Docker و استارت سرویس
           amazon-linux-extras install docker -y
           service docker start
           usermod -a -G docker ec2-user
+
+          # نصب CodeDeploy Agent
+          yum install -y ruby
+          cd /home/ec2-user
+          wget https://aws-codedeploy-${AWS::Region}.s3.${AWS::Region}.amazonaws.com/latest/install
+          chmod +x ./install
+          ./install auto
+
+          # استارت و فعال سازی سرویس CodeDeploy
+          service codedeploy-agent start
+          chkconfig codedeploy-agent on
