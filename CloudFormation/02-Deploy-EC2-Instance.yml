@@ -24,7 +24,7 @@ Resources:
     Type: AWS::EC2::Instance
     Properties:
       InstanceType: t3.micro
-      SubnetId: !Ref PublicSubnet1
+      SubnetId: !ImportValue PublicSubnet1Id
       ImageId: ami-0c02fb55956c7d316  # Amazon Linux 2 - region-specific
       SecurityGroupIds:
         - !Ref InstanceSecurityGroup
@@ -45,7 +45,7 @@ Resources:
     Type: AWS::EC2::Instance
     Properties:
       InstanceType: t3.micro
-      SubnetId: !Ref PublicSubnet2
+      SubnetId: !ImportValue PublicSubnet2Id
       ImageId: ami-0c02fb55956c7d316  # Amazon Linux 2
       SecurityGroupIds:
         - !Ref InstanceSecurityGroup
