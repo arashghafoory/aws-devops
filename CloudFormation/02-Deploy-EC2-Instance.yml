@@ -1,28 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: EC2 Instances with Docker and CodeDeploy Agent
-
-Mappings:
-  UserDataScripts:
-    CommonScript:
-      Content: |
-        #!/bin/bash
-        yum update -y
-
-        # نصب Docker و استارت سرویس
-        amazon-linux-extras install docker -y
-        service docker start
-        usermod -a -G docker ec2-user
-
-        # نصب CodeDeploy Agent
-        yum install -y ruby
-        cd /home/ec2-user
-        wget https://aws-codedeploy-${AWS::Region}.s3.${AWS::Region}.amazonaws.com/latest/install
-        chmod +x ./install
-        ./install auto
-
-        # استارت و فعال سازی سرویس CodeDeploy
-        service codedeploy-agent start
-        chkconfig codedeploy-agent on
+Description: EC2 Instances with Launch Template, Docker and CodeDeploy Agent
 
 Resources:
 
@@ -45,16 +22,45 @@ Resources:
         - Key: Name
           Value: InstanceSG
 
-  # EC2 in Public Subnet 1
+  # Launch Template with UserData script
+  EC2LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: DockerCodeDeployTemplate
+      LaunchTemplateData:
+        InstanceType: t3.micro
+        ImageId: ami-0c02fb55956c7d316  # Amazon Linux 2 (Virginia)
+        KeyName: Virginia-Compute
+        SecurityGroupIds:
+          - !Ref InstanceSecurityGroup
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            yum update -y
+
+            # نصب Docker
+            amazon-linux-extras install docker -y
+            service docker start
+            usermod -a -G docker ec2-user
+
+            # نصب CodeDeploy Agent
+            yum install -y ruby
+            cd /home/ec2-user
+            wget https://aws-codedeploy-${AWS::Region}.s3.${AWS::Region}.amazonaws.com/latest/install
+            chmod +x ./install
+            ./install auto
+
+            service codedeploy-agent start
+            chkconfig codedeploy-agent on
+
+  # EC2 Instance 1 using Launch Template
   EC2Instance1:
     Type: AWS::EC2::Instance
     Properties:
-      InstanceType: t3.micro
+      LaunchTemplate:
+        LaunchTemplateId: !Ref EC2LaunchTemplate
+        Version: !GetAtt EC2LaunchTemplate.LatestVersionNumber
       SubnetId: !ImportValue PublicSubnet1Id
-      ImageId: ami-0c02fb55956c7d316  # Amazon Linux 2
-      SecurityGroupIds:
-        - !Ref InstanceSecurityGroup
-      KeyName: Virginia-Compute
       Tags:
         - Key: Name
           Value: DockerInstance1
@@ -64,21 +70,15 @@ Resources:
           Value: Frontend
         - Key: App
           Value: TodoApp
-      UserData:
-        Fn::Base64: !Sub
-          - ${Script}
-          - Script: !FindInMap [UserDataScripts, CommonScript, Content]
 
-  # EC2 in Public Subnet 2
+  # EC2 Instance 2 using Launch Template
   EC2Instance2:
     Type: AWS::EC2::Instance
     Properties:
-      InstanceType: t3.micro
+      LaunchTemplate:
+        LaunchTemplateId: !Ref EC2LaunchTemplate
+        Version: !GetAtt EC2LaunchTemplate.LatestVersionNumber
       SubnetId: !ImportValue PublicSubnet2Id
-      ImageId: ami-0c02fb55956c7d316  # Amazon Linux 2
-      SecurityGroupIds:
-        - !Ref InstanceSecurityGroup
-      KeyName: Virginia-Compute
       Tags:
         - Key: Name
           Value: DockerInstance2
@@ -88,7 +88,3 @@ Resources:
           Value: Frontend
         - Key: App
           Value: TodoApp
-      UserData:
-        Fn::Base64: !Sub
-          - ${Script}
-          - Script: !FindInMap [UserDataScripts, CommonScript, Content]
