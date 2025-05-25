@@ -1,5 +1,17 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: EC2 Instances with Launch Template, Docker and CodeDeploy Agent
+Description: EC2 Instances with Launch Template, Docker and CodeDeploy Agent (Using Existing IAM Role)
+
+Parameters:
+  InstanceType:
+    Type: String
+    Default: t2.micro
+    Description: EC2 Instance Type
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Name of an existing EC2 KeyPair
+  InstanceProfileName:
+    Type: String
+    Description: Name of an existing Instance Profile to attach to EC2 instances (must include IAM Role)
 
 Resources:
 
@@ -28,9 +40,11 @@ Resources:
     Properties:
       LaunchTemplateName: DockerCodeDeployTemplate
       LaunchTemplateData:
-        InstanceType: t2.micro
+        InstanceType: !Ref InstanceType
         ImageId: ami-0c02fb55956c7d316  # Amazon Linux 2 (Virginia)
-        KeyName: Virginia-Compute
+        KeyName: !Ref KeyName
+        IamInstanceProfile:
+          Name: !Ref InstanceProfileName
         SecurityGroupIds:
           - !Ref InstanceSecurityGroup
         UserData:
@@ -44,14 +58,18 @@ Resources:
             usermod -a -G docker ec2-user
 
             # نصب CodeDeploy Agent
-            yum install -y ruby
+            yum install -y ruby wget
             cd /home/ec2-user
             wget https://aws-codedeploy-${AWS::Region}.s3.${AWS::Region}.amazonaws.com/latest/install
             chmod +x ./install
             ./install auto
-
             service codedeploy-agent start
             chkconfig codedeploy-agent on
+
+            # نصب SSM Agent
+            amazon-linux-extras install amazon-ssm-agent -y
+            systemctl enable amazon-ssm-agent
+            systemctl start amazon-ssm-agent
 
   # EC2 Instance 1 using Launch Template
   EC2Instance1:
@@ -61,6 +79,7 @@ Resources:
         LaunchTemplateId: !Ref EC2LaunchTemplate
         Version: !GetAtt EC2LaunchTemplate.LatestVersionNumber
       SubnetId: !ImportValue PublicSubnet1Id
+      IamInstanceProfile: !Ref InstanceProfileName
       Tags:
         - Key: Name
           Value: DockerInstance1
@@ -79,6 +98,7 @@ Resources:
         LaunchTemplateId: !Ref EC2LaunchTemplate
         Version: !GetAtt EC2LaunchTemplate.LatestVersionNumber
       SubnetId: !ImportValue PublicSubnet2Id
+      IamInstanceProfile: !Ref InstanceProfileName
       Tags:
         - Key: Name
           Value: DockerInstance2
