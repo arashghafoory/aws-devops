@@ -1,5 +1,8 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create Role for CodePipeline
+
 Resources:
-  EC2CodeDeployRole:
+  EC2CodePipelineRole:
     Type: AWS::IAM::Role
     Properties:
       RoleName: Custom-EC2-CodePipeline-role
