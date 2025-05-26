@@ -13,7 +13,7 @@ Resources:
         - !ImportValue PublicSubnet1Id
         - !ImportValue PublicSubnet2Id
       SecurityGroups: 
-        - !Ref LoadBalancerSecurityGroup
+        - !Ref LoadbalancerSecurityGroup
 
   LoadBalancerListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
@@ -42,11 +42,22 @@ Resources:
       HealthCheckTimeoutSeconds: 5
       HealthCheckIntervalSeconds: 30
 
-Parameters:
+  LoadbalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow HTTP
+      VpcId: !ImportValue MyVPC-Id
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: LoadbalancerSG
 
-  LoadBalancerSecurityGroup:
-    Type: AWS::EC2::SecurityGroup::Id
-    Description: Select the security group for the load balancer
+
+Parameters:
 
 Outputs:
   LoadBalancerDNSName:
