@@ -56,9 +56,6 @@ Resources:
         - Key: Name
           Value: LoadbalancerSG
 
-
-Parameters:
-
 Outputs:
   LoadBalancerDNSName:
     Description: DNS name of the load balancer
