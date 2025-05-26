@@ -5,7 +5,7 @@ Resources:
   MyLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      Name: My-LB
+      Name: ECS-LB
       Scheme: internet-facing
       Type: application
       IpAddressType: ipv4
