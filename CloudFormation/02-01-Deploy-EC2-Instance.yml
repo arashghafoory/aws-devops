@@ -89,22 +89,3 @@ Resources:
           Value: Frontend
         - Key: App
           Value: TodoApp
-
-  # EC2 Instance 2 using Launch Template
-  EC2Instance2:
-    Type: AWS::EC2::Instance
-    Properties:
-      LaunchTemplate:
-        LaunchTemplateId: !Ref EC2LaunchTemplate
-        Version: !GetAtt EC2LaunchTemplate.LatestVersionNumber
-      SubnetId: !ImportValue PublicSubnet2Id
-      IamInstanceProfile: !Ref InstanceProfileName
-      Tags:
-        - Key: Name
-          Value: DockerInstance2
-        - Key: Env
-          Value: Prod
-        - Key: Role
-          Value: Frontend
-        - Key: App
-          Value: TodoApp
