@@ -1,0 +1,57 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation template for Application Load Balancer with Target Group'
+
+Resources:
+  MyLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: My-LB
+      Scheme: internet-facing
+      Type: application
+      IpAddressType: ipv4
+      Subnets: 
+        - !ImportValue PublicSubnet1Id
+        - !ImportValue PublicSubnet2Id
+      SecurityGroups: 
+        - !Ref LoadBalancerSecurityGroup
+
+  LoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref MyTargetGroup
+      LoadBalancerArn: !Ref MyLoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+  MyTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: my-targets
+      Port: 80
+      Protocol: HTTP
+      TargetType: instance
+      VpcId: !ImportValue MyVPC-Id
+      HealthCheckPath: /api/version
+      HealthCheckProtocol: HTTP
+      HealthCheckPort: traffic-port
+      HealthCheckEnabled: true
+      HealthyThresholdCount: 5
+      UnhealthyThresholdCount: 2
+      HealthCheckTimeoutSeconds: 5
+      HealthCheckIntervalSeconds: 30
+
+Parameters:
+
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: Select the security group for the load balancer
+
+Outputs:
+  LoadBalancerDNSName:
+    Description: DNS name of the load balancer
+    Value: !GetAtt MyLoadBalancer.DNSName
+  TargetGroupArn:
+    Description: ARN of the target group
+    Value: !Ref MyTargetGroup
