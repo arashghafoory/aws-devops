@@ -1,25 +1,37 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Create VPC with 2 Subnet in 2 AZ and Internet Gateway and Nat Gateway
+Description: Create VPC with 4 Private Subnets, 2 Public Subnets, Internet Gateway and NAT Gateway
+
 Parameters:
   VpcCidr:
     Type: String
     Default: 10.0.0.0/16
+
   PublicSubnet1Cidr:
     Type: String
     Default: 10.0.1.0/24
+
   PublicSubnet2Cidr:
     Type: String
     Default: 10.0.2.0/24
+
   PrivateSubnet1Cidr:
     Type: String
     Default: 10.0.101.0/24
+
   PrivateSubnet2Cidr:
     Type: String
     Default: 10.0.102.0/24
 
+  PrivateDBSubnet1Cidr:
+    Type: String
+    Default: 10.0.103.0/24
+
+  PrivateDBSubnet2Cidr:
+    Type: String
+    Default: 10.0.104.0/24
+
 Resources:
 
-  # VPC
   MyVPC:
     Type: AWS::EC2::VPC
     Properties:
@@ -30,7 +42,6 @@ Resources:
         - Key: Name
           Value: MyVPC
 
-  # Internet Gateway
   InternetGateway:
     Type: AWS::EC2::InternetGateway
     Properties:
@@ -44,7 +55,6 @@ Resources:
       VpcId: !Ref MyVPC
       InternetGatewayId: !Ref InternetGateway
 
-  # Subnets
   PublicSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
@@ -89,13 +99,33 @@ Resources:
         - Key: Name
           Value: PrivateSubnet2
 
-  # Elastic IP for NAT Gateway
+  PrivateDBSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: !Ref PrivateDBSubnet1Cidr
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: PrivateDBSubnet1
+
+  PrivateDBSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: !Ref PrivateDBSubnet2Cidr
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: PrivateDBSubnet2
+
   NatEIP:
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
 
-  # NAT Gateway in PublicSubnet1
   NatGateway:
     Type: AWS::EC2::NatGateway
     Properties:
@@ -105,7 +135,6 @@ Resources:
         - Key: Name
           Value: MyNATGateway
 
-  # Route Table for Public Subnets
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
@@ -134,7 +163,6 @@ Resources:
       SubnetId: !Ref PublicSubnet2
       RouteTableId: !Ref PublicRouteTable
 
-  # Route Table for Private Subnets
   PrivateRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
@@ -162,13 +190,25 @@ Resources:
       SubnetId: !Ref PrivateSubnet2
       RouteTableId: !Ref PrivateRouteTable
 
+  PrivateDBSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateDBSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateDBSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateDBSubnet2
+      RouteTableId: !Ref PrivateRouteTable
+
 Outputs:
   VpcId:
     Description: VPC ID
     Value: !Ref MyVPC
     Export:
       Name: MyVPC-Id
-  
+
   PublicSubnet1Id:
     Description: Public Subnet 1 ID
     Value: !Ref PublicSubnet1
@@ -192,3 +232,15 @@ Outputs:
     Value: !Ref PrivateSubnet2
     Export:
       Name: PrivateSubnet2Id
+
+  PrivateDBSubnet1Id:
+    Description: Private DB Subnet 1 ID
+    Value: !Ref PrivateDBSubnet1
+    Export:
+      Name: PrivateDBSubnet1Id
+
+  PrivateDBSubnet2Id:
+    Description: Private DB Subnet 2 ID
+    Value: !Ref PrivateDBSubnet2
+    Export:
+      Name: PrivateDBSubnet2Id
