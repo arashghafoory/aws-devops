@@ -1,0 +1,53 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Deploy PostgreSQL RDS in private subnets with security group
+
+Resources:
+
+  RdsSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow access to PostgreSQL from specific SG
+      VpcId: !ImportValue MyVPC-Id
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: !ImportValue PrivateSubnet1Cidr
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: !ImportValue PrivateSubnet2Cidr
+
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: "Subnet group for RDS in private subnets"
+      SubnetIds:
+        - !ImportValue PrivateDBSubnet1Id
+        - !ImportValue PrivateDBSubnet2Id
+
+  RDSInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      Engine: postgres
+      DBInstanceClass: db.t3.micro
+      DBName: '{{resolve:ssm:/todoapp/db/name}}'
+      MasterUsername: '{{resolve:ssm-secure:/todoapp/db/username}}'
+      MasterUserPassword: '{{resolve:ssm-secure:/todoapp/db/password}}'
+      AllocatedStorage: 20
+      VPCSecurityGroups:
+        - !Ref RdsSecurityGroup
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      MultiAZ: false
+      PubliclyAccessible: false
+      BackupRetentionPeriod: 7
+      DeletionProtection: false
+
+Outputs:
+  RDSInstanceEndpoint:
+    Description: "RDS Endpoint"
+    Value: !GetAtt RDSInstance.Endpoint.Address
+
+  RDSInstancePort:
+    Description: "RDS Port"
+    Value: !GetAtt RDSInstance.Endpoint.Port
