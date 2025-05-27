@@ -259,9 +259,9 @@ Outputs:
       
   PrivateSubnet1CidrValue:
     Description: CIDR block for Private Subnet 1
-    Value: !Ref PrivateSubnet2Cidr
+    Value: !Ref PrivateSubnet1Cidr
     Export:
-      Name: PrivateSubnet2Cidr
+      Name: PrivateSubnet1Cidr
       
   PrivateSubnet2CidrValue:
     Description: CIDR block for Private Subnet 2
