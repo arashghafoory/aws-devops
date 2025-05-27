@@ -244,3 +244,39 @@ Outputs:
     Value: !Ref PrivateDBSubnet2
     Export:
       Name: PrivateDBSubnet2Id
+
+  PublicSubnet1CidrValue:
+    Description: CIDR block for Public Subnet 1
+    Value: !Ref PublicSubnet1Cidr
+    Export:
+      Name: PublicSubnet1Cidr
+      
+  PublicSubnet2CidrValue:
+    Description: CIDR block for Public Subnet 2
+    Value: !Ref PublicSubnet2Cidr
+    Export:
+      Name: PublicSubnet2Cidr
+      
+  PrivateSubnet1CidrValue:
+    Description: CIDR block for Private Subnet 1
+    Value: !Ref PrivateSubnet2Cidr
+    Export:
+      Name: PrivateSubnet2Cidr
+      
+  PrivateSubnet2CidrValue:
+    Description: CIDR block for Private Subnet 2
+    Value: !Ref PrivateSubnet2Cidr
+    Export:
+      Name: PrivateSubnet2Cidr
+
+  PrivateDBSubnet1CidrValue:
+    Description: CIDR block for Private DB Subnet 1
+    Value: !Ref PrivateDBSubnet1Cidr
+    Export:
+      Name: PrivateDBSubnet1Cidr
+
+  PrivateDBSubnet2CidrValue:
+    Description: CIDR block for Private DB Subnet 2
+    Value: !Ref PrivateDBSubnet2Cidr
+    Export:
+      Name: PrivateDBSubnet2Cidr
