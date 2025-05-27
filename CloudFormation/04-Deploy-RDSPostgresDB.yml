@@ -32,7 +32,7 @@ Resources:
       Engine: postgres
       DBInstanceClass: db.t3.micro
       DBName: '{{resolve:ssm:/todoapp/db/name}}'
-      MasterUsername: '{{resolve:ssm-secure:/todoapp/db/username}}'
+      MasterUsername: '{{resolve:ssm:/todoapp/db/username}}'
       MasterUserPassword: '{{resolve:ssm-secure:/todoapp/db/password}}'
       AllocatedStorage: 20
       VPCSecurityGroups:
