@@ -21,6 +21,7 @@ Resources:
   DBSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
     Properties:
+      DBSubnetGroupName: "PrivateDBSubnetGroup"
       DBSubnetGroupDescription: "Subnet group for RDS in private subnets"
       SubnetIds:
         - !ImportValue PrivateDBSubnet1Id
@@ -29,6 +30,7 @@ Resources:
   RDSInstance:
     Type: AWS::RDS::DBInstance
     Properties:
+      DBInstanceIdentifier: "Todo DB"
       Engine: postgres
       DBInstanceClass: db.t3.micro
       DBName: '{{resolve:ssm:/todoapp/db/name}}'
