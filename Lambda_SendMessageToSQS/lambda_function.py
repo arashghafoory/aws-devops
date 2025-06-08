@@ -1,8 +1,9 @@
 import json
 import boto3
+import os
 
 sqs = boto3.client('sqs')
-queue_url = 'https://sqs.us-east-1.amazonaws.com/706712229921/todo'
+queue_url = os.environ['SQS_URL']
 
 def lambda_handler(event, context):
     print(event)
@@ -29,7 +30,7 @@ def lambda_handler(event, context):
         # Send Message To SQS
         sqs.send_message(
             QueueUrl=queue_url,
-            MessageBody=f'Todo item || #{todo_id}: {todo_title} was {todo_action}'
+            MessageBody=f'Todo Application Action Message || #{todo_id}: {todo_title} was {todo_action}'
         )
 
         return {
