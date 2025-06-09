@@ -30,7 +30,7 @@ Resources:
   RDSInstance:
     Type: AWS::RDS::DBInstance
     Properties:
-      DBInstanceIdentifier: "Todo DB"
+      DBInstanceIdentifier: "todoinstance"
       Engine: postgres
       DBInstanceClass: db.t3.micro
       DBName: '{{resolve:ssm:/todoapp/db/name}}'
