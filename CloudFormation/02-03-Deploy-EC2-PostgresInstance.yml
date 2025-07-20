@@ -15,7 +15,7 @@ Resources:
       ImageId: ami-0c02fb55956c7d316
       SubnetId: !ImportValue PublicSubnet1Id
       SecurityGroupIds:
-        - !Ref InstanceSecurityGroup
+        - !GetAtt InstanceSecurityGroup.GroupId
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
