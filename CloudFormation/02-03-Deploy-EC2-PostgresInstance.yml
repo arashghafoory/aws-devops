@@ -1,0 +1,82 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: EC2 with Docker and PostgreSQL using Docker Compose
+
+Parameters:
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Name of an existing EC2 KeyPair to SSH into the instance
+
+Resources:
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      KeyName: !Ref KeyName
+      ImageId: ami-0c02fb55956c7d316 # Amazon Linux 2 (برای region us-east-1)
+      SubnetId: !ImportValue PublicSubnet1Id
+      SecurityGroups:
+        - !Ref InstanceSecurityGroup
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          yum update -y
+          amazon-linux-extras install docker -y
+          service docker start
+          usermod -a -G docker ec2-user
+
+          curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          chmod +x /usr/local/bin/docker-compose
+          ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+
+          mkdir /home/ec2-user/postgres-app
+          cat <<EOF > /home/ec2-user/postgres-app/docker-compose.yml
+          version: '3.8'
+          services:
+            postgres:
+              image: postgres:14
+              restart: always
+              environment:
+                POSTGRES_USER: root
+                POSTGRES_PASSWORD: 123123
+              ports:
+                - "5432:5432"
+              volumes:
+                - pgdata:/var/lib/postgresql/data
+                - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+          volumes:
+            pgdata:
+          EOF
+
+          cat <<EOF > /home/ec2-user/postgres-app/init.sql
+          CREATE DATABASE tododb;
+
+          \\connect tododb
+
+          CREATE TABLE IF NOT EXISTS todos (
+              id SERIAL PRIMARY KEY,
+              title TEXT NOT NULL,
+              description TEXT,
+              completed BOOLEAN DEFAULT FALSE,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+          EOF
+
+          cd /home/ec2-user/postgres-app
+          docker-compose up -d
+          chown -R ec2-user:ec2-user /home/ec2-user/postgres-app
+
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable SSH and PostgreSQL
+      VpcId: !ImportValue MyVPC-Id
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: 0.0.0.0/0
