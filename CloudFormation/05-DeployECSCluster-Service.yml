@@ -25,21 +25,7 @@ Resources:
     Type: AWS::ECS::Cluster
     Properties:
       ClusterName: !Ref ServiceName
-
-  ServiceRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: ECSCodeDeployServiceRole
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ecs.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
-
+      
   LoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
@@ -91,20 +77,6 @@ Resources:
     Properties:
       ComputePlatform: ECS
       ApplicationName: !Sub ${ServiceName}-App
-
-  CodeDeployRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: CodeDeployECSRole
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: codedeploy.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSCodeDeployRoleForECS
 
   ECSService:
     Type: AWS::ECS::Service
