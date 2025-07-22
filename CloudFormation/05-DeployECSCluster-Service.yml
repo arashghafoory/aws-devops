@@ -14,7 +14,7 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Allow HTTP to ECS tasks
-      VpcId: !Ref VpcId
+      VpcId: !ImportValue MyVPC-Id
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
