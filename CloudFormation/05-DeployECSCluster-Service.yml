@@ -1,39 +1,123 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: >
-  ECS Cluster and Service with CodeDeploy deployment controller (Blue/Green ready),
-  including IAM Role for CodeDeploy and Security Group for ECS tasks.
+Description: ECS Blue/Green Deployment with CodeDeploy
 
 Parameters:
-  TaskDefinitionArn:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  Subnets:
+    Type: List<AWS::EC2::Subnet::Id>
+  ImageUrl:
     Type: String
-    Description: ARN of existing ECS Task Definition
-  DesiredCount:
+  ServiceName:
+    Type: String
+  ContainerPort:
     Type: Number
-    Default: 1
-    Description: Number of desired ECS tasks
+    Default: 80
 
 Resources:
 
   ECSCluster:
     Type: AWS::ECS::Cluster
     Properties:
-      ClusterName: my-ecs-cluster
+      ClusterName: !Ref ServiceName
 
-  ECSServiceSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Allow HTTP to ECS tasks
-      VpcId: !ImportValue MyVPC-Id
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          CidrIp: 0.0.0.0/0
-
-  CodeDeployServiceRole:
+  ServiceRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: CodeDeployServiceRole
+      RoleName: ECSCodeDeployServiceRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: TaskExecutionRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Ref ServiceName
+      Cpu: '256'
+      Memory: '512'
+      NetworkMode: awsvpc
+      RequiresCompatibilities: [FARGATE]
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      ContainerDefinitions:
+        - Name: !Ref ServiceName
+          Image: !Ref ImageUrl
+          PortMappings:
+            - ContainerPort: !Ref ContainerPort
+
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub ${ServiceName}-LB
+      Subnets: !Ref Subnets
+      SecurityGroups: [] # Add if needed
+      Scheme: internet-facing
+      Type: application
+      IpAddressType: ipv4
+
+  TargetGroupBlue:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      VpcId: !Ref VpcId
+      Port: !Ref ContainerPort
+      Protocol: HTTP
+      TargetType: ip
+      Name: !Sub ${ServiceName}-tg-blue
+      HealthCheckPath: /
+      Matcher:
+        HttpCode: 200
+
+  TargetGroupGreen:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      VpcId: !Ref VpcId
+      Port: !Ref ContainerPort
+      Protocol: HTTP
+      TargetType: ip
+      Name: !Sub ${ServiceName}-tg-green
+      HealthCheckPath: /
+      Matcher:
+        HttpCode: 200
+
+  Listener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroupBlue
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+  CodeDeployApp:
+    Type: AWS::CodeDeploy::Application
+    Properties:
+      ComputePlatform: ECS
+      ApplicationName: !Sub ${ServiceName}-App
+
+  CodeDeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: CodeDeployECSRole
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -42,35 +126,51 @@ Resources:
               Service: codedeploy.amazonaws.com
             Action: sts:AssumeRole
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AWSCodeDeployRoleForECS
+        - arn:aws:iam::aws:policy/service-role/AWSCodeDeployRoleForECS
+
+  CodeDeployGroup:
+    Type: AWS::CodeDeploy::DeploymentGroup
+    Properties:
+      ApplicationName: !Ref CodeDeployApp
+      DeploymentGroupName: !Sub ${ServiceName}-DG
+      ServiceRoleArn: !GetAtt CodeDeployRole.Arn
+      DeploymentStyle:
+        DeploymentType: BLUE_GREEN
+        DeploymentOption: WITH_TRAFFIC_CONTROL
+      BlueGreenDeploymentConfiguration:
+        TerminateBlueInstancesOnDeploymentSuccess:
+          Action: TERMINATE
+          TerminationWaitTimeInMinutes: 1
+        DeploymentReadyOption:
+          ActionOnTimeout: CONTINUE_DEPLOYMENT
+          WaitTimeInMinutes: 0
+      LoadBalancerInfo:
+        TargetGroupPairInfoList:
+          - TargetGroups:
+              - Name: !GetAtt TargetGroupBlue.TargetGroupName
+              - Name: !GetAtt TargetGroupGreen.TargetGroupName
+            ProdTrafficRoute:
+              ListenerArns: [!Ref Listener]
+      ECSService:
+        ClusterName: !Ref ECSCluster
+        ServiceName: !Ref ECSService
 
   ECSService:
     Type: AWS::ECS::Service
+    DependsOn: Listener
     Properties:
       Cluster: !Ref ECSCluster
-      ServiceName: my-ecs-service
-      TaskDefinition: !Ref TaskDefinitionArn
-      DesiredCount: !Ref DesiredCount
       LaunchType: FARGATE
+      DesiredCount: 1
+      TaskDefinition: !Ref TaskDefinition
       DeploymentController:
         Type: CODE_DEPLOY
       NetworkConfiguration:
         AwsvpcConfiguration:
           AssignPublicIp: ENABLED
-          SecurityGroups:
-            - !Ref ECSServiceSecurityGroup
-          Subnets:
-            - !ImportValue PrivateSubnet1Id
-            - !ImportValue PrivateSubnet2Id
-      Role: !GetAtt CodeDeployServiceRole.Arn
-
-Outputs:
-  ClusterName:
-    Description: ECS Cluster Name
-    Value: !Ref ECSCluster
-  ServiceName:
-    Description: ECS Service Name
-    Value: !Ref ECSService
-  CodeDeployRoleArn:
-    Description: IAM Role ARN for CodeDeploy
-    Value: !GetAtt CodeDeployServiceRole.Arn
+          Subnets: !Ref Subnets
+          SecurityGroups: [] # Add SG here
+      LoadBalancers:
+        - ContainerName: !Ref ServiceName
+          ContainerPort: !Ref ContainerPort
+          TargetGroupArn: !Ref TargetGroupBlue
