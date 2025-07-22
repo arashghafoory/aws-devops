@@ -2,20 +2,25 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: ECS Blue/Green Deployment with CodeDeploy
 
 Parameters:
-  VpcId:
-    Type: AWS::EC2::VPC::Id
-  Subnets:
-    Type: List<AWS::EC2::Subnet::Id>
-  ImageUrl:
-    Type: String
   ServiceName:
     Type: String
-  ContainerPort:
-    Type: Number
-    Default: 80
+  TaskDefinitionArn:
+    Type: String
+    Description: ARN of existing ECS Task Definition
 
 Resources:
 
+  ECSServiceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow HTTP to ECS tasks
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          
   ECSCluster:
     Type: AWS::ECS::Cluster
     Properties:
@@ -35,40 +40,13 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
 
-  TaskExecutionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: TaskExecutionRole
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ecs-tasks.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
-
-  TaskDefinition:
-    Type: AWS::ECS::TaskDefinition
-    Properties:
-      Family: !Ref ServiceName
-      Cpu: '256'
-      Memory: '512'
-      NetworkMode: awsvpc
-      RequiresCompatibilities: [FARGATE]
-      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
-      ContainerDefinitions:
-        - Name: !Ref ServiceName
-          Image: !Ref ImageUrl
-          PortMappings:
-            - ContainerPort: !Ref ContainerPort
-
   LoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
       Name: !Sub ${ServiceName}-LB
-      Subnets: !Ref Subnets
+      Subnets: 
+        - !ImportValue PublicSubnet1Id
+        - !ImportValue PublicSubnet2Id
       SecurityGroups: [] # Add if needed
       Scheme: internet-facing
       Type: application
@@ -77,24 +55,24 @@ Resources:
   TargetGroupBlue:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      VpcId: !Ref VpcId
-      Port: !Ref ContainerPort
+      VpcId: !ImportValue MyVPC-Id
+      Port: 80
       Protocol: HTTP
       TargetType: ip
       Name: !Sub ${ServiceName}-tg-blue
-      HealthCheckPath: /
+      HealthCheckPath: /api/version
       Matcher:
         HttpCode: 200
 
   TargetGroupGreen:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      VpcId: !Ref VpcId
-      Port: !Ref ContainerPort
+      VpcId: !ImportValue MyVPC-Id
+      Port: 80
       Protocol: HTTP
       TargetType: ip
       Name: !Sub ${ServiceName}-tg-green
-      HealthCheckPath: /
+      HealthCheckPath: /api/version
       Matcher:
         HttpCode: 200
 
@@ -128,33 +106,6 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSCodeDeployRoleForECS
 
-  CodeDeployGroup:
-    Type: AWS::CodeDeploy::DeploymentGroup
-    Properties:
-      ApplicationName: !Ref CodeDeployApp
-      DeploymentGroupName: !Sub ${ServiceName}-DG
-      ServiceRoleArn: !GetAtt CodeDeployRole.Arn
-      DeploymentStyle:
-        DeploymentType: BLUE_GREEN
-        DeploymentOption: WITH_TRAFFIC_CONTROL
-      BlueGreenDeploymentConfiguration:
-        TerminateBlueInstancesOnDeploymentSuccess:
-          Action: TERMINATE
-          TerminationWaitTimeInMinutes: 1
-        DeploymentReadyOption:
-          ActionOnTimeout: CONTINUE_DEPLOYMENT
-          WaitTimeInMinutes: 0
-      LoadBalancerInfo:
-        TargetGroupPairInfoList:
-          - TargetGroups:
-              - Name: !GetAtt TargetGroupBlue.TargetGroupName
-              - Name: !GetAtt TargetGroupGreen.TargetGroupName
-            ProdTrafficRoute:
-              ListenerArns: [!Ref Listener]
-      ECSService:
-        ClusterName: !Ref ECSCluster
-        ServiceName: !Ref ECSService
-
   ECSService:
     Type: AWS::ECS::Service
     DependsOn: Listener
@@ -162,15 +113,18 @@ Resources:
       Cluster: !Ref ECSCluster
       LaunchType: FARGATE
       DesiredCount: 1
-      TaskDefinition: !Ref TaskDefinition
+      TaskDefinition: !Ref TaskDefinitionArn
       DeploymentController:
         Type: CODE_DEPLOY
       NetworkConfiguration:
         AwsvpcConfiguration:
-          AssignPublicIp: ENABLED
-          Subnets: !Ref Subnets
-          SecurityGroups: [] # Add SG here
+          AssignPublicIp: DISABLED
+          Subnets: 
+            - !ImportValue PrivateSubnet1Id
+            - !ImportValue PrivateSubnet2Id
+          SecurityGroups:
+            - !Ref ECSServiceSecurityGroup
       LoadBalancers:
         - ContainerName: !Ref ServiceName
-          ContainerPort: !Ref ContainerPort
+          ContainerPort: 80
           TargetGroupArn: !Ref TargetGroupBlue
