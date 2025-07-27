@@ -25,7 +25,7 @@ jobs:
       - name: Deploy CloudFormation Stack
         run: |
           aws cloudformation deploy \
-            --template-file CloudFormation/02-01-Deploy-EC2-Instance.yml \
+            --template-file CloudFormation/01-Deploy-VPC.yml \
             --stack-name Deploy-EC2-DockerInstance \
             --capabilities CAPABILITY_NAMED_IAM \
             --region ${{ env.AWS_REGION }}  
