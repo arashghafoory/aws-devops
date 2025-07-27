@@ -1,0 +1,11 @@
+#SUBNET TAGS
+
+### for public subnets
+
+Key: kubernetes.io/role/elb
+Value: 1
+
+### for Private Subnets
+
+Key: kubernetes.io/role/internal-elb
+Value: 1
