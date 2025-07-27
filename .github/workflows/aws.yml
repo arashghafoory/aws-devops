@@ -23,10 +23,26 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Deploy CloudFormation Stack
+      - name: Deploy VPC Stack
         run: |
           aws cloudformation deploy \
             --template-file CloudFormation/01-Deploy-VPC.yml \
+            --stack-name Deploy-VPC \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --region ${{ env.AWS_REGION }}  
+
+      - name: Deploy EC2 Instance Stack
+        run: |
+          aws cloudformation deploy \
+            --template-file CloudFormation/02-01-Deploy-EC2-Instance.yml \
             --stack-name Deploy-EC2-DockerInstance \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --region ${{ env.AWS_REGION }}  
+
+      - name: Deploy Postgres Instance Stack
+        run: |
+          aws cloudformation deploy \
+            --template-file CloudFormation/02-03-Deploy-EC2-PostgresInstance.yml \
+            --stack-name Deploy-Postgres-DockerInstance \
             --capabilities CAPABILITY_NAMED_IAM \
             --region ${{ env.AWS_REGION }}  
